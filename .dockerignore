@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.env
+.git
+.gitignore
+data/pbix/*
+tablero/*.pbix
+tablero/*.txt
+guia_azure_ad_ti.md
+solicitud_admin.md

@@ -1,0 +1,44 @@
+# Stack completo: app + Ollama, cada uno en su contenedor, conectados por la
+# red interna que arma compose (la app le habla a Ollama por su nombre de
+# servicio "ollama", no por localhost ni host.containers.internal). Funciona
+# igual con Docker o con Podman (mismo formato de compose estandar).
+#
+# Uso: docker compose up -d   (o "podman compose up -d" con Podman)
+services:
+  ollama:
+    image: docker.io/ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      # Persiste los modelos descargados fuera del contenedor — si lo borras
+      # y lo vuelves a crear, no hay que re-descargar nada.
+      - ollama-data:/root/.ollama
+    # OJO: sin "ports:" aqui a proposito. Ollama solo es alcanzable DESDE el
+    # contenedor "app" (por la red interna de compose, via "ollama:11434"),
+    # nunca desde afuera del host — en una red corporativa, publicar este
+    # puerto dejaria a cualquiera en la red hablarle a Ollama directo, sin
+    # pasar por la app. Si necesitas depurarlo desde el host mismo, usa
+    # "docker exec -it ollama ..." (o "podman exec -it ollama ...") en vez
+    # de publicar el puerto.
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: copiloto-powerbi
+    depends_on:
+      - ollama
+    env_file:
+      - .env  # AZURE_CLIENT_ID, AZURE_TENANT_ID, OLLAMA_MODEL, etc.
+    environment:
+      # Dentro de la red de compose, "ollama" resuelve al contenedor de
+      # arriba — reemplaza cualquier OLLAMA_URL que tengas en .env pensado
+      # para localhost/host.containers.internal.
+      - OLLAMA_URL=http://ollama:11434/v1
+    volumes:
+      - ./tablero:/app/tablero:Z
+      - ./data:/app/data:Z
+    ports:
+      - "8011:8011"
+    restart: unless-stopped
+
+volumes:
+  ollama-data:

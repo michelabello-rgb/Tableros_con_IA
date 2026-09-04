@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copiloto Power BI</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="brand-mark">PBI</div>
+        <div>
+            <div class="brand-title">Copiloto Power BI</div>
+            <div class="brand-sub" id="brand-sub">Power BI Service</div>
+        </div>
+    </div>
+    <div class="topbar-status">
+        <span class="pill" id="pill-llm">Verificando asistente…</span>
+        <span class="pill" id="pill-data">Verificando datos…</span>
+        <button class="btn btn-ghost" id="refresh-btn" onclick="refreshData()" title="Vuelve a leer el .pbix de tablero/">🔄 Actualizar datos</button>
+        <a class="btn btn-ghost" href="{{ original_url }}" target="_blank" rel="noopener">Abrir en Power BI ↗</a>
+    </div>
+</header>
+
+<main class="layout" id="layout">
+    <section class="report-pane" id="report-pane">
+        <button class="pane-fab" id="fullscreen-btn" onclick="toggleFullscreen()" title="Pantalla completa">⛶</button>
+        {% if azure_embed_enabled %}
+        <div id="embed-gate" class="hero">
+            <div class="hero-icon">🔐</div>
+            <h1>Conectar el tablero</h1>
+            <p>Inicia sesión con tu cuenta de Microsoft/Power BI para incrustar el reporte real, interactivo, aquí mismo.</p>
+            <button class="btn btn-primary btn-lg" onclick="connectReport()">Conectar tablero</button>
+            <p id="embed-error" class="hero-error"></p>
+        </div>
+        <div id="report-container" class="report-embed"></div>
+        {% else %}
+        <div class="pbi-preview pbi-preview-main">
+            <div class="pbi-preview-head">
+                <span>Vista previa — reporte oficial de Power BI</span>
+                <span class="pbi-preview-tag">Se activa al conectar Azure AD</span>
+            </div>
+            <iframe src="{{ embed_url }}" class="pbi-preview-frame"></iframe>
+            <div class="pbi-preview-note">
+                Normal que aparezca en blanco: Microsoft bloquea su pantalla de login dentro de
+                iframes. En cuanto tengamos <code>AZURE_CLIENT_ID</code>/<code>AZURE_TENANT_ID</code>
+                configurados, este espacio pasa a mostrar el reporte real e interactivo. Mientras
+                tanto: <a href="{{ original_url }}" target="_blank" rel="noopener">abrir reporte oficial en Power BI ↗</a>
+            </div>
+        </div>
+
+        <details class="setup-card">
+            <summary class="setup-title">¿Cómo activo el reporte real aquí? →</summary>
+            <ol>
+                <li>Entra a <strong>portal.azure.com</strong> → <em>Microsoft Entra ID</em> → <em>Registros de aplicaciones</em> → <strong>Nuevo registro</strong>.</li>
+                <li>Nombre: cualquiera (ej. "Copiloto Power BI"). Tipo de cuenta: "Solo este directorio organizativo".</li>
+                <li>Plataforma: <strong>SPA (Single-page application)</strong>, URI de redirección: <code>http://localhost:8011</code>.</li>
+                <li>En <em>Permisos de API</em> → Agregar permiso → <strong>Power BI Service</strong> → Delegados → <code>Report.Read.All</code> → Guardar.</li>
+                <li>Si tu organización lo requiere, pide a un admin que dé "Consentimiento del administrador".</li>
+                <li>Copia el <strong>Id. de aplicación (cliente)</strong> y el <strong>Id. de directorio (inquilino)</strong> desde la pantalla "Información general".</li>
+                <li>Pégalos en <code>.env</code>: <code>AZURE_CLIENT_ID=...</code> y <code>AZURE_TENANT_ID=...</code>, reinicia el servidor.</li>
+            </ol>
+        </details>
+        {% endif %}
+    </section>
+
+    <div class="resizer" id="resizer" title="Arrastra para ajustar el ancho">
+        <button class="resizer-toggle" id="collapse-btn" onclick="toggleChatCollapse()" title="Colapsar/expandir el chat">›</button>
+    </div>
+
+    <aside class="chat-pane" id="chat-pane">
+        <div class="chat-head">
+            <div>
+                <div class="chat-head-title">Pregúntale al tablero</div>
+                <div class="chat-head-sub" id="data-note">Sin datos conectados todavía</div>
+            </div>
+            <div class="chat-head-actions">
+                <button class="icon-btn" id="clear-chat-btn" onclick="clearChat()" title="Limpiar conversación">🗑</button>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <button class="qa-btn" onclick="runReport()">📄 Reporte corto</button>
+            <button class="qa-btn" onclick="sendQuick('¿Qué datos tiene este tablero? Explícame las tablas principales.')">📊 Qué hay aquí</button>
+            <button class="qa-btn" onclick="sendQuick('¿Qué debería revisar primero?')">🔍 Qué revisar</button>
+            <button class="qa-btn" onclick="sendQuick('¿Cuáles son las cifras más importantes?')">🏆 Cifras clave</button>
+            <button class="qa-btn" onclick="sendQuick('¿Cómo se compara este periodo con el anterior?')">📅 Comparar periodos</button>
+            <button class="qa-btn" onclick="sendQuick('Soy nuevo en esto, ¿cómo le saco provecho a este tablero?')">🧭 Guía rápida</button>
+        </div>
+
+        <div class="chat-msgs-wrap">
+            <div class="chat-msgs" id="chat-msgs">
+                <div class="msg msg-bot">
+                    ¡Hola! 👋 Soy tu copiloto para este tablero — funciono con cualquier reporte de Power
+                    BI que pongas en <code>tablero/</code>, leyendo sus tablas y columnas reales. Antes
+                    de responder, siempre reviso que las cifras que te doy coincidan con los datos (es
+                    información financiera, así que prefiero decir "no lo sé" antes que adivinar). Usa
+                    "Actualizar datos" arriba si reemplazaste el archivo, y pregúntame con confianza.
+                </div>
+            </div>
+            <button class="scroll-bottom-btn" id="scroll-bottom-btn" onclick="scrollChatToBottom()" title="Ir al final">↓</button>
+        </div>
+
+        <div class="chat-input-row">
+            <textarea id="chat-input" rows="2" placeholder="Escribe tu pregunta… (Enter para enviar)"></textarea>
+            <button id="send-btn" onclick="sendChat()">Enviar</button>
+        </div>
+    </aside>
+</main>
+
+<button class="pane-fab chat-reopen" id="chat-reopen-btn" onclick="toggleChatCollapse()" title="Mostrar chat" hidden>💬</button>
+
+{% if azure_embed_enabled %}
+<script>
+window.EMBED_CONFIG = {
+    clientId: "{{ azure_client_id }}",
+    tenantId: "{{ azure_tenant_id }}",
+    groupId: "{{ powerbi_group_id }}",
+    reportId: "{{ powerbi_report_id }}",
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.30.0/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/powerbi-client@2.23.1/dist/powerbi.min.js"></script>
+<script src="/static/embed.js"></script>
+{% endif %}
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "_readme": "Reglas de gobernanza de negocio sobre medidas DAX especificas. Esto NO se regenera al re-extraer el .pbix (a diferencia de todo lo demas en data/pbix/) — es una decision de negocio, se edita a mano aqui. Ver GOBERNANZA.md para el detalle de cada regla.",
+
+  "alias_medidas": {
+    "Ingreso_Neto_Ejecutado": "Ingreso_Neto_General"
+  },
+
+  "medidas_bloqueadas": {
+    "Pendiente_de_recaudo": "La medida \"Pendiente_de_recaudo\" no tiene una formula documentada todavia (esta vacia en el modelo) — esta pendiente de definicion. No puedo darte un valor hasta que el equipo de negocio la confirme."
+  },
+
+  "casi_duplicados": {
+    "RECAUDO_CARTERA": {
+      "alternativas": ["RECAUDO_financiaciones"],
+      "sinonimos": ["financiado", "financiacion", "financiación", "financiamiento"],
+      "aviso": "Existe una segunda medida con nombre parecido, \"RECAUDO_financiaciones\", casi identica a esta — el filtro que usa cada una difiere solo en mayusculas (\"FINANCIADO\" vs \"Financiado\"), lo que puede dar un resultado distinto por una inconsistencia real en los datos. Uso RECAUDO_CARTERA por defecto mientras esto no se confirme con el equipo de negocio; si te referias a la otra, dimelo."
+    }
+  },
+
+  "medidas_con_regla_pendiente": {
+    "Meta_estudiantes_2025": "Esta medida distingue Tipo \"B\" vs \"C\" de periodo, y ese significado todavia no esta confirmado con el equipo de negocio — toma esta cifra con cautela.",
+    "Meta_ajustada_2025": "Esta medida se calcula sobre Meta_estudiantes_2025, que distingue Tipo \"B\" vs \"C\" de periodo con un significado de negocio todavia sin confirmar — toma esta cifra con cautela.",
+    "ORDEN_NETO_2024": "Esta es una medida legada (usa un patron de filtro por texto, no recomendado) — existe en el modelo pero no debe tomarse como referencia para años futuros; si necesitas el equivalente de otro año, confirma primero con el equipo de negocio cual es la forma correcta de calcularlo."
+  },
+
+  "medidas_requieren_periodo": [],
+
+  "medida_por_defecto": {
+    "recaudo": {
+      "medida": "RECAUDO_GRAL",
+      "solo_si_no_hay": ["cartera", "financiado", "financiacion", "financiación", "financiamiento", "pendiente", "sobre"]
+    }
+  }
+}
