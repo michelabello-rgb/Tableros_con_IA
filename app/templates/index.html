@@ -19,8 +19,15 @@
     <div class="topbar-status">
         <span class="pill" id="pill-llm">Verificando asistente…</span>
         <span class="pill" id="pill-data">Verificando datos…</span>
+        {% if current_user.rol == "admin" %}
         <button class="btn btn-ghost" id="refresh-btn" onclick="refreshData()" title="Vuelve a leer el .pbix de tablero/">🔄 Actualizar datos</button>
+        {% endif %}
         <a class="btn btn-ghost" href="{{ original_url }}" target="_blank" rel="noopener">Abrir en Power BI ↗</a>
+        {% if current_user.rol == "admin" %}
+        <a class="btn btn-ghost" href="/admin/usuarios">👥 Usuarios</a>
+        {% endif %}
+        <span class="pill" title="{{ current_user.username }}">👤 {{ current_user.nombre }}</span>
+        <a class="btn btn-ghost" href="/logout">Cerrar sesión</a>
     </div>
 </header>
 
@@ -92,13 +99,7 @@
 
         <div class="chat-msgs-wrap">
             <div class="chat-msgs" id="chat-msgs">
-                <div class="msg msg-bot">
-                    ¡Hola! 👋 Soy tu copiloto para este tablero — funciono con cualquier reporte de Power
-                    BI que pongas en <code>tablero/</code>, leyendo sus tablas y columnas reales. Antes
-                    de responder, siempre reviso que las cifras que te doy coincidan con los datos (es
-                    información financiera, así que prefiero decir "no lo sé" antes que adivinar). Usa
-                    "Actualizar datos" arriba si reemplazaste el archivo, y pregúntame con confianza.
-                </div>
+                <div class="msg msg-bot">¡Hola! 👋 Soy el copiloto de este tablero. Verifico cada cifra contra los datos reales antes de responder — si no estoy seguro, te lo digo en vez de adivinar. Pregúntame con confianza.</div>
             </div>
             <button class="scroll-bottom-btn" id="scroll-bottom-btn" onclick="scrollChatToBottom()" title="Ir al final">↓</button>
         </div>

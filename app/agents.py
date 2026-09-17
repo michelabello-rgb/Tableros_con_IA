@@ -21,12 +21,6 @@ Pipeline:
                                                        motor directo sean matemáticamente
                                                        consistentes (recómputo independiente,
                                                        rango plausible, conservación, integridad)
-  8. Agente de Consistencia (Python, sin LLM)      -> misma pregunta + mismos datos =
-                                                       SIEMPRE la misma respuesta (cache por
-                                                       pregunta+versión de datos), y baja la
-                                                       temperatura/fija el seed del LLM para
-                                                       que ni siquiera la primera vez varíe
-                                                       de más
 """
 import re
 import unicodedata
@@ -133,10 +127,6 @@ def _fmt_direct(n: float) -> str:
     return f"{n:,.0f}".replace(",", ".")
 
 
-# Nombres de columna/medida que suenan a cifra MONETARIA (regla de negocio:
-# formato pesos colombianos, "$X.XXX.XXX,XX" — nunca formato ingles, nunca
-# sin simbolo). No es exhaustivo a proposito: ante la duda, mejor un numero
-# plano de mas que un "$" de menos en algo que no era dinero.
 _MONEY_NAME_RE = re.compile(
     r"ingreso|recaudo|\borden\b|orden_neto|valor|monto|cuota|cr[eé]dito|cartera|financiaci[oó]n|\bpago\b",
     re.IGNORECASE,
@@ -1024,48 +1014,7 @@ GREETING_REPLIES = [
 ]
 
 
-# ── 8. Agente de Consistencia (determinista) ────────────────────────────────
-# Cachea la respuesta final por (pregunta normalizada, version de los datos)
-# — la MISMA pregunta, mientras los datos no cambien, devuelve SIEMPRE la
-# misma respuesta exacta, sin volver a pasar por el LLM (mas rapido tambien:
-# la segunda vez es instantaneo). Se complementa con temperature baja + seed
-# fijo en llm.chat() — aquella reduce que el modelo varie, esto GARANTIZA
-# que no varie para una pregunta ya respondida. El cache se invalida solo:
-# la clave incluye dataset.data_version(), que cambia con cada "Actualizar
-# datos" (nuevo manifest.json), asi nunca sirve una respuesta vieja de datos
-# que ya no existen.
-_ANSWER_CACHE: dict[tuple[str, float], dict] = {}
-_ANSWER_CACHE_MAX = 500
-
-
-def _cache_key(pregunta: str) -> tuple[str, float]:
-    norm = re.sub(r"\s+", " ", pregunta.strip().lower())
-    return norm, dataset.data_version()
-
-
-def clear_answer_cache():
-    """Vacia el cache de respuestas — no hace falta llamarlo despues de un
-    /api/refresh (la clave ya cambia sola con dataset.data_version()), pero
-    evita que queden dando vueltas en memoria respuestas de una version de
-    datos que ya nadie va a volver a pedir."""
-    _ANSWER_CACHE.clear()
-
-
 def run_pipeline(pregunta: str) -> dict:
-    """Corre el pipeline completo (con cache de consistencia). Devuelve
-    {text, verified, intent, corrected, cached}."""
-    key = _cache_key(pregunta)
-    cached = _ANSWER_CACHE.get(key)
-    if cached is not None:
-        return {**cached, "cached": True}
-    result = _run_pipeline(pregunta)
-    if len(_ANSWER_CACHE) >= _ANSWER_CACHE_MAX:
-        _ANSWER_CACHE.clear()  # tope simple: a este tamaño no vale la pena un LRU real
-    _ANSWER_CACHE[key] = result
-    return {**result, "cached": False}
-
-
-def _run_pipeline(pregunta: str) -> dict:
     """Corre el pipeline completo. Devuelve {text, verified, intent, corrected}."""
     intent = classify_intent(pregunta)
 
@@ -1096,23 +1045,7 @@ def _run_pipeline(pregunta: str) -> dict:
 
 
 def run_report_pipeline(prompt: str) -> dict:
-    """Igual que run_pipeline pero para el boton 'Reporte corto' (sin
-    clasificar intencion) — tambien pasa por el Agente de Consistencia: el
-    prompt es siempre el mismo texto fijo, asi que sin cache cada clic
-    volveria a generar un reporte ligeramente distinto por el muestreo del
-    LLM, aunque los datos no hayan cambiado en absoluto."""
-    key = _cache_key("__reporte_corto__" + prompt)
-    cached = _ANSWER_CACHE.get(key)
-    if cached is not None:
-        return {**cached, "cached": True}
-    result = _run_report_pipeline(prompt)
-    if len(_ANSWER_CACHE) >= _ANSWER_CACHE_MAX:
-        _ANSWER_CACHE.clear()
-    _ANSWER_CACHE[key] = result
-    return {**result, "cached": False}
-
-
-def _run_report_pipeline(prompt: str) -> dict:
+    """Igual que run_pipeline pero para el boton 'Reporte corto' (sin clasificar intencion)."""
     ctx, snippets = gather_context(prompt)
     draft = draft_answer(prompt, ctx, snippets)
     if not ctx:

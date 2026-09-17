@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copiloto Power BI — Administración de usuarios</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="admin-body">
+
+<header class="topbar">
+    <div class="brand">
+        <div class="brand-mark">PBI</div>
+        <div>
+            <div class="brand-title">Administración de usuarios</div>
+            <div class="brand-sub">Copiloto Power BI</div>
+        </div>
+    </div>
+    <div class="topbar-status">
+        <span class="pill">👤 {{ current_user.nombre }} · admin</span>
+        <a class="btn btn-ghost" href="/">← Volver al tablero</a>
+        <a class="btn btn-ghost" href="/logout">Cerrar sesión</a>
+    </div>
+</header>
+
+<main class="admin-main">
+
+    {% if error %}<p class="hero-error admin-msg">{{ error }}</p>{% endif %}
+    {% if ok_msg %}<p class="admin-msg admin-msg-ok">{{ ok_msg }}</p>{% endif %}
+
+    <section class="admin-card">
+        <h2 class="admin-card-title">Crear usuario</h2>
+        <form method="post" action="/admin/usuarios" class="admin-create-form">
+            <input class="login-input" type="text" name="username" placeholder="Username" required>
+            <input class="login-input" type="text" name="nombre" placeholder="Nombre completo" required>
+            <input class="login-input" type="email" name="correo" placeholder="Correo (opcional)">
+            <select class="login-input" name="rol">
+                <option value="usuario" selected>usuario</option>
+                <option value="admin">admin</option>
+            </select>
+            <input class="login-input" type="password" name="password" placeholder="Contraseña (mín. 8 caracteres)" required>
+            <button class="btn btn-primary" type="submit">Crear</button>
+        </form>
+    </section>
+
+    <section class="admin-card">
+        <h2 class="admin-card-title">Usuarios ({{ usuarios|length }})</h2>
+        <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                    <th>Último acceso</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                <tr>
+                    <td>{{ u.Username }}</td>
+                    <td>{{ u.Nombre_Completo }}</td>
+                    <td>{{ u.Correo or "—" }}</td>
+                    <td><span class="pill">{{ u.Rol }}</span></td>
+                    <td>
+                        {% if u.Activo %}<span class="pill ok">Activo</span>
+                        {% else %}<span class="pill err">Deshabilitado</span>{% endif %}
+                    </td>
+                    <td>{{ u.Ultimo_Acceso_Fmt or "nunca" }}</td>
+                    <td class="admin-actions">
+                        <form method="post" action="/admin/usuarios/{{ u.Id }}/toggle" class="admin-inline-form">
+                            <input type="hidden" name="activo" value="{{ 0 if u.Activo else 1 }}">
+                            <button class="btn btn-ghost" type="submit">
+                                {{ "Deshabilitar" if u.Activo else "Habilitar" }}
+                            </button>
+                        </form>
+                        <form method="post" action="/admin/usuarios/{{ u.Id }}/password" class="admin-inline-form">
+                            <input class="login-input admin-pw-input" type="password" name="password" placeholder="Nueva contraseña" minlength="8" required>
+                            <button class="btn btn-ghost" type="submit">Cambiar clave</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" style="text-align:center;color:var(--muted)">Sin usuarios todavía.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </section>
+
+</main>
+
+</body>
+</html>

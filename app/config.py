@@ -29,3 +29,21 @@ OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "30m")
 AZURE_CLIENT_ID = os.environ.get("AZURE_CLIENT_ID", "")
 AZURE_TENANT_ID = os.environ.get("AZURE_TENANT_ID", "")
 AZURE_EMBED_ENABLED = bool(AZURE_CLIENT_ID and AZURE_TENANT_ID)
+
+# Login contra SQL Server (requiere las tablas COE.User_Admin y COE.Acceso_Log ya creadas en el servidor).
+# DB_PWD nunca tiene default: sin ella, db.py se rehusa a conectar en vez de
+# intentar con una contraseña vacia contra un servidor de produccion.
+DB_SERVER = os.environ.get("DB_SERVER", "")
+DB_DATABASE = os.environ.get("DB_DATABASE", "")
+DB_UID = os.environ.get("DB_UID", "")
+DB_PWD = os.environ.get("DB_PWD", "")
+DB_CONFIGURED = bool(DB_SERVER and DB_DATABASE and DB_UID and DB_PWD)
+
+# Firma las cookies de sesion del login — SIN default real a proposito: en
+# produccion hay que poner una propia en .env (ej. `python -c "import
+# secrets; print(secrets.token_hex(32))"`). Si no esta configurada, se usa
+# una aleatoria generada en cada arranque (las sesiones no sobreviven un
+# reinicio del servidor, pero al menos no queda una clave fija y predecible
+# en el codigo fuente).
+import secrets as _secrets
+SESSION_SECRET = os.environ.get("SESSION_SECRET") or _secrets.token_hex(32)

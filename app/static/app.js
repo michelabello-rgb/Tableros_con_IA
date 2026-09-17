@@ -2,6 +2,14 @@ const chatMsgs = document.getElementById('chat-msgs');
 const input = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-btn');
 
+/** Si la sesion expiro (401) mientras se usaba el chat, manda a /login en
+ * vez de mostrar un error críptico. Devuelve true si redirigio (para que
+ * el que llama corte el flujo ahi mismo). */
+function redirectIfLoggedOut(res) {
+    if (res.status === 401) { window.location.href = '/login'; return true; }
+    return false;
+}
+
 input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
 });
@@ -211,6 +219,7 @@ async function runReport() {
     const t0 = Date.now();
     try {
         const res = await fetch('/api/report', { method: 'POST' });
+        if (redirectIfLoggedOut(res)) return;
         const d = await res.json();
         const secs = (Date.now() - t0) / 1000;
         d.cached ? timer.cancel() : timer.stop(secs);
@@ -238,6 +247,7 @@ async function sendChat() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: q }),
         });
+        if (redirectIfLoggedOut(res)) return;
         const d = await res.json();
         const secs = (Date.now() - t0) / 1000;
         // Saludos, respuestas directas (lookup sin LLM) y respuestas
@@ -261,7 +271,9 @@ async function refreshStatus() {
     const dataNote = document.getElementById('data-note');
     const brandSub = document.getElementById('brand-sub');
     try {
-        const d = await (await fetch('/api/status')).json();
+        const res = await fetch('/api/status');
+        if (redirectIfLoggedOut(res)) return;
+        const d = await res.json();
         pillLlm.textContent = d.llm.ok ? `Asistente activo · ${d.llm.active || ''}` : 'Asistente no disponible';
         pillLlm.className = 'pill ' + (d.llm.ok ? 'ok' : 'err');
 
@@ -287,6 +299,7 @@ async function refreshData() {
     btn.textContent = '🔄 Leyendo .pbix…';
     try {
         const res = await fetch('/api/refresh', { method: 'POST' });
+        if (redirectIfLoggedOut(res)) return;
         const d = await res.json();
         if (!d.ok) throw new Error(d.error || 'Error desconocido');
         await refreshStatus();
